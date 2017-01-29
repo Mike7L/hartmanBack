@@ -1,0 +1,23 @@
+{
+	"name": "hartman-back",
+	"version": "0.0.1",
+	"description": "Hartman Bot Backend",
+	"main": "server.js",
+	"scripts": {
+		"start": "node server.js"
+	},
+	"dependencies": {
+		"express": "^4.14.1",
+		"body-parser": "^1.16.0",
+		"nedb": "*"
+	},
+	"engines": {
+		"node": "4.4.5"
+	},
+	"keywords": [
+		"node",
+		"express",
+		"api"
+	],
+	"license": "MIT"
+}
