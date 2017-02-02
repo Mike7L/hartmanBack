@@ -5,11 +5,20 @@
 var routes = function (app, db) {
 
 
-    app.get("/", function (req, res) {
-        res.send("Oh, hi! There's not much to see here - view the code instead<br><br><br><hr><p><a href=\"https://gomix.com/#!/remix/rest-api/546c8e41-ca39-481c-837f-ea830661c315\"><img src=\"https://gomix.com/images/background-light/remix-on-gomix.svg\"></a></p><p><a href=\"https://gomix.com/#!/project/rest-api\">View Code</a></p>");
-        console.log("Received GET 1");
+app.get("/", function (request, response) {
+  response.sendFile(__dirname + '/views/index.html');
+});
 
+app.get("/users", function (request, response) {
+  var dbUsers=[];
+  db.find({}, function (err, users) { // Find all users in the collection
+    users.forEach(function(user) {
+      dbUsers.push([user.firstName,user.lastName]); // adds their info to the dbUsers value
     });
+    response.send(dbUsers); // sends dbUsers back to the page
+  });
+});
+
 
     app.get("/deleteTheFuckingDatabase", function (req, res) {
         db.remove({}, {multi: true}, function (err, numRemoved) {
@@ -48,73 +57,36 @@ var routes = function (app, db) {
     });
 
 
-    app.post("/showStats", function (req, res) {
-        console.log("showStats Received POST: " + JSON.stringify(req.body));
-        if (!req.body.fb_id) {
-            console.log("incomplete POST: " + JSON.stringify(req.body));
+    app.get("/showStats", function (req, res) {
+      //https://hartmanback.gomix.me/showStats?fb_id=5849c9f1e4b05a2c162d9b9a
+        console.log("showStats Received Get: " + JSON.stringify(req.query));
+        if (!req.query.fb_id) {
+            console.log("incomplete Get: " + JSON.stringify(req.query));
             return res.send({"status": "error", "message": "missing parameter(s)"});
         }
 
-        var json = req.body;
+        var fb_id = req.query.fb_id;
         
 
-        db.findOne({_id: json.fb_id}, function (err, user) {
+        db.findOne({_id: fb_id}, function (err, user) {
             //console.log(err);
           
                   var text = JSON.stringify(user, null, 4);
           
-                    db.find({user_id: json.fb_id, type: 'visit'}, function (err, visits) {
+                    db.find({user_id: fb_id, type: 'visit'}, function (err, visits) {
                       let userText = " USER: " + JSON.stringify(user, null, 4);
                       let visitText = " VISIT: " + JSON.stringify(visits, null, 4);
-                                
-                      let answer = {
-                              "messages": [
-      
-                                 {
-                                      
-                                      "attachment": {
-                                          "type": "template",
-                                          "payload": {
-                                              "template_type": "button",
-                                              "text": userText + visitText,
-                                              "buttons": [
-                                                  {
-                                                      "type": "json_plugin_url",
-                                                      "url": "https://hartmanback.gomix.me/showStats?visits=1",
-                                                      "title": "visits"
-                                                  },
-                                                  {
-                                                      "type": "show_block",
-                                                      "block_name": json.last_processed_block_name,
-                                                      "title": "zurück"
-                                                  },
-                                            ]
-                                        }
-                                    }
-                                }
-                                  
-                                ]
-                      };
-                        
-                        
-                       
-
+                      let answer = userText + visitText;
                       log(answer);
-                      return res.json(answer);      
+                      return res.send("<pre>" + answer + "</pre>");      
 
                       });
-
-         
-            
-
-
-            
-        });
-      
   
-      
-        
+        });
+
     });
+  
+
 
 
     app.post("/start", function (req, res) {
@@ -165,8 +137,16 @@ var routes = function (app, db) {
            programm : user.programm,
            start : new Date(),
            finished: false,
+           canceled: false,
            exercises: {}
          }
+         
+         //set all other visits to finished but canceled
+         db.update({ type : 'visit', user_id : user._id, finished: false}, { $set: { finished: true, canceled: true } }, { multi: true }, function (err, numReplaced) {
+
+          });
+         
+         
          db.insert(visit);
       }
 
