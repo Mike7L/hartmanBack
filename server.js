@@ -8,7 +8,7 @@ var express = require('express');
 var app = express();
 app.set('json spaces', 4);
 var bodyParser = require("body-parser");
-app.use(express.static('public'));
+//app.use(express.static('public'));
 
 
 var Datastore = require('nedb'), 

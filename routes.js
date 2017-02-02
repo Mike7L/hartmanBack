@@ -116,7 +116,7 @@ app.get("/users", function (request, response) {
             user._id = user.fb_id;
             user.type = 'user',
             user.score = 0;
-            user.programm = 1;
+            user.programm = 0;
             user.muscle_top = 1;
             user.muscle_middle = 2;
             user.muscle_bottom = 10;
@@ -138,7 +138,7 @@ app.get("/users", function (request, response) {
            start : new Date(),
            finished: false,
            canceled: false,
-           exercises: {}
+           exercises: []
          }
          
          //set all other visits to finished but canceled
@@ -236,7 +236,11 @@ app.get("/users", function (request, response) {
           //find unfinished visit
             db.findOne({user_id: json.fb_id, type: 'visit', finished: false}, function (err, visit) {
             //console.log(err);
-
+              visit.exercises.push({exercise: json.exercise, exercise_group:json.exercise_group, repsTodo: json.repsTodo, repsDone:json.repsDone});
+              
+              log(visit, "Exercise log");
+              
+              db.update({_id: visit._id}, visit);
             log(visit, 'visit');
           });
         }
@@ -246,6 +250,8 @@ app.get("/users", function (request, response) {
             if ((json.repsDone < 0) || (json.repsDone > 10 * json.repsTodo)) {
                 return sendReaction("ugly");
             }
+          
+          logExercise(user, json);
 
           let multiplier = 1;
 
@@ -309,39 +315,14 @@ app.get("/users", function (request, response) {
 
         function finish(user, json) {
 
-            if ((json.repsDone < 0) || (json.repsDone > 10 * json.repsTodo)) {
-                return sendReaction("ugly");
-            }
-
-          let multiplier = 1;
-
-            //division by 0
-            if (json.repsTodo > 0) {
-                log(json, "test1");
-                multiplier = json.repsDone / json.repsTodo;
-            }
-
-            log(multiplier);
-
-            let group_strength = 1;
-            switch (json.exercise_group) {
-                case "top":
-                    user.muscle_top = multiplier;
-                    break;
-                case "middle":
-                    user.muscle_middle = multiplier;
-                    break;
-                case "bottom":
-                    user.muscle_bottom = multiplier;
-                    break;
-                default:
-                    //bottom
-            }
-
             db.update({_id: json.fb_id}, user);
 
+            //Finish current visit
+             db.update({ type : 'visit', user_id : user._id, finished: false}, { $set: { finished: true } }, { multi: false }, function (err, numReplaced) {
 
-            let reaction = multiplier < 1 ? "bad" : "good";
+            });
+
+            let reaction = "ok";
 
             return sendReaction(reaction);
         }
@@ -361,78 +342,6 @@ app.get("/users", function (request, response) {
 
 
 };
-
-
-class User {
-    constructor(json, db) {
-        db.findOne({_id: json.fb_id}, function (err, user) {
-            //console.log(err);
-            if (user == null) {
-                //new user  
-                user = User.newUser(json, db);
-                log(user, "Created");
-            } else {
-                log(user, "Found");
-            }
-
-
-            for (var field in user) {
-                //this.field = user.field;
-            }
-
-            log(this, "sdasda");
-        });
-
-        //log(this, "sdasda");
-
-    }
-
-    update() {
-
-    }
-
-    startDay() {
-
-
-    }
-
-    static fromDb(fb_id, db) {
-        db.findOne({_id: fb_id}, function (err, user) {
-            return user;
-        });
-
-    }
-
-    static newUser(user, db) {
-
-        user._id = user.fb_id;
-
-        user.score = 0;
-        user.programm = 1;
-        user.exercise = 1;
-        user.muscle_top = 1;
-        user.muscle_middle = 1;
-        user.muscle_bottom = 1;
-
-        user.visits = {};
-        user.visit_first = Date.now();
-        user.visit_last = Date.now();
-
-        db.insert(user);
-        return user;
-    }
-
-
-}
-
-class Visit {
-    constructor(user) {
-        this.user_id = user._id;
-        this.date = Date.now();
-
-    }
-
-}
 
 
 function log(user, hint = "") {
