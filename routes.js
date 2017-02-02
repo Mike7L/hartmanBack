@@ -4,11 +4,12 @@
 
 var routes = function (app, db) {
 
-
+/*
 app.get("/", function (request, response) {
   response.sendFile(__dirname + '/views/index.html');
 });
-
+*/
+  
 app.get("/users", function (request, response) {
   var dbUsers=[];
   db.find({}, function (err, users) { // Find all users in the collection
@@ -123,6 +124,12 @@ app.get("/users", function (request, response) {
 
             user.visit_first = new Date();
             user.visit_last = new Date();
+          
+          //Davidovsy
+          if (user.fb_id == "588a6503e4b012460e93828b" || user.fb_id == "5849c9f1e4b05a2c162d9b9a") {
+            user.programm = 1;
+          }
+          
 
             console.log("Created user: " + JSON.stringify(user))
 
@@ -278,8 +285,16 @@ app.get("/users", function (request, response) {
                     //bottom
             }
 
+          
+            let score = parseInt(json.score_per_exercise);
+            if (multiplier > 1) {
+              score = Math.round(score * 1.3);
+            } else if (multiplier < 1) {
+              score = Math.round(score * 0.8);
+            }
+            user.score = parseInt(user.score) + parseInt(score);
+          
             db.update({_id: json.fb_id}, user);
-
 
             let reaction = multiplier < 1 ? "bad" : "good";
 
@@ -315,6 +330,13 @@ app.get("/users", function (request, response) {
 
         function finish(user, json) {
 
+           let day_summary = "normal"; 
+           if (user.score >= json.score_finish) {
+              user.programm += 1;
+             day_summary = "levelup";
+             // If levelup set score to 0
+             user.score = 0;
+            }
             db.update({_id: json.fb_id}, user);
 
             //Finish current visit
@@ -322,15 +344,15 @@ app.get("/users", function (request, response) {
 
             });
 
-            let reaction = "ok";
+            
 
-            return sendReaction(reaction);
+            return sendDaySummary(day_summary);
         }
       
-          function sendReaction(reaction) {
+          function sendDaySummary(day_summary) {
             let answer = {
                 "set_attributes": {
-                    "reaction": reaction,
+                    "day_summary": day_summary,
                 }
             };
 
