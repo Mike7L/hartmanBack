@@ -9,15 +9,21 @@
 	"dependencies": {
 		"express": "^4.14.1",
 		"body-parser": "^1.16.0",
-		"nedb": "*"
+		"nedb": "^1.8.0"
 	},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mike7L/hartmanBack"
+  },
 	"engines": {
 		"node": "4.4.5"
 	},
 	"keywords": [
 		"node",
 		"express",
-		"api"
+		"api",
+		"nedb",
+		"gomix"
 	],
 	"license": "MIT"
 }
