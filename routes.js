@@ -74,7 +74,8 @@ app.get("/users", function (request, response) {
           
                   var text = JSON.stringify(user, null, 4);
           
-                    db.find({user_id: fb_id, type: 'visit'}, function (err, visits) {
+                    db.find({user_id: fb_id, type: 'visit'}).sort({ start: -1 }).exec(
+                      function (err, visits) {
                       let userText = " USER: " + JSON.stringify(user, null, 4);
                       let visitText = " VISIT: " + JSON.stringify(visits, null, 4);
                       let answer = userText + visitText;
@@ -119,15 +120,19 @@ app.get("/users", function (request, response) {
             user.score = 0;
             user.programm = 0;
             user.muscle_top = 1;
-            user.muscle_middle = 2;
-            user.muscle_bottom = 10;
+            user.muscle_middle = 1;
+            user.muscle_bottom = 1;
 
             user.visit_first = new Date();
             user.visit_last = new Date();
           
           //Davidovsy
           if (user.fb_id == "588a6503e4b012460e93828b" || user.fb_id == "5849c9f1e4b05a2c162d9b9a") {
-            user.programm = 1;
+            user.programm = 0;
+            
+            user.muscle_top = 1;
+            user.muscle_middle = 1;
+            user.muscle_bottom = 1;
           }
           
 
@@ -259,27 +264,40 @@ app.get("/users", function (request, response) {
             }
           
           logExercise(user, json);
+          
+          let repsTodo = parseInt(json.repsTodo);
+          let repsDone = parseInt(json.repsDone);
 
           let multiplier = 1;
-
-            //division by 0
-            if (json.repsTodo > 0) {
-                log(json, "test1");
-                multiplier = json.repsDone / json.repsTodo;
+            if (user.programm == 0) {
+              console.log()
+                //division by 0
+              if (repsTodo > 0) {
+                  multiplier = repsDone / repsTodo;
+              }
+            } else {
+               if (repsDone > repsTodo)  {
+                   multiplier = 1.1;  
+               } else if (repsDone < repsTodo) {
+                 multiplier = 0.9;  
+               } else {
+                 multiplier = 1;
+               }
+              
+               
             }
-
-            log(multiplier);
+            
 
             let group_strength = 1;
             switch (json.exercise_group) {
                 case "top":
-                    user.muscle_top = multiplier;
+                    user.muscle_top *= multiplier;
                     break;
                 case "middle":
-                    user.muscle_middle = multiplier;
+                    user.muscle_middle *= multiplier;
                     break;
                 case "bottom":
-                    user.muscle_bottom = multiplier;
+                    user.muscle_bottom *= multiplier;
                     break;
                 default:
                     //bottom
