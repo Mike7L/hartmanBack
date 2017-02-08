@@ -2,23 +2,24 @@
 // This defines three routes that our API is going to use.
 //
 
+
 var routes = function (app, db) {
 
-/*
-app.get("/", function (request, response) {
-  response.sendFile(__dirname + '/views/index.html');
-});
-*/
-  
-app.get("/users", function (request, response) {
-  var dbUsers=[];
-  db.find({}, function (err, users) { // Find all users in the collection
-    users.forEach(function(user) {
-      dbUsers.push([user.firstName,user.lastName]); // adds their info to the dbUsers value
+    /*
+     app.get("/", function (request, response) {
+     response.sendFile(__dirname + '/views/index.html');
+     });
+     */
+
+    app.get("/users", function (request, response) {
+        var dbUsers = [];
+        db.find({}, function (err, users) { // Find all users in the collection
+            users.forEach(function (user) {
+                dbUsers.push([user.firstName, user.lastName]); // adds their info to the dbUsers value
+            });
+            response.send(dbUsers); // sends dbUsers back to the page
+        });
     });
-    response.send(dbUsers); // sends dbUsers back to the page
-  });
-});
 
 
     app.get("/deleteTheFuckingDatabase", function (req, res) {
@@ -33,16 +34,10 @@ app.get("/users", function (request, response) {
             console.log("Received incomplete POST: " + JSON.stringify(req.body));
             return res.send({"status": "error", "message": "missing parameter(s)"});
         }
-      
-       db.remove({user_id: req.body.fb_id}, {multi: true}, function (err, numRemoved) {
-            let message = {
-                "messages": [
-                    {"text": "Removing visits, " + numRemoved},
-                ]
-            };
 
-            res.json(message);
-            console.log("User removed: " + numRemoved);
+
+        db.remove({user_id: req.body.fb_id}, {multi: true}, function (err, numRemoved) {
+            console.log("Removing visits: " + numRemoved);
         });
 
         db.remove({_id: req.body.fb_id}, {multi: false}, function (err) {
@@ -52,14 +47,16 @@ app.get("/users", function (request, response) {
                 ]
             };
 
-            res.json(message);
-            console.log("User removed");
+            console.log("User removed:" + req.body.fb_id);
+            return res.json(message);
         });
+
+
     });
 
 
     app.get("/showStats", function (req, res) {
-      //https://hartmanback.gomix.me/showStats?fb_id=5849c9f1e4b05a2c162d9b9a
+        //https://hartmanback.gomix.me/showStats?fb_id=5849c9f1e4b05a2c162d9b9a
         console.log("showStats Received Get: " + JSON.stringify(req.query));
         if (!req.query.fb_id) {
             console.log("incomplete Get: " + JSON.stringify(req.query));
@@ -67,28 +64,26 @@ app.get("/users", function (request, response) {
         }
 
         var fb_id = req.query.fb_id;
-        
+
 
         db.findOne({_id: fb_id}, function (err, user) {
             //console.log(err);
-          
-                  var text = JSON.stringify(user, null, 4);
-          
-                    db.find({user_id: fb_id, type: 'visit'}).sort({ start: -1 }).exec(
-                      function (err, visits) {
-                      let userText = " USER: " + JSON.stringify(user, null, 4);
-                      let visitText = " VISIT: " + JSON.stringify(visits, null, 4);
-                      let answer = userText + visitText;
-                      log(answer);
-                      return res.send("<pre>" + answer + "</pre>");      
 
-                      });
-  
+            var text = JSON.stringify(user, null, 4);
+
+            db.find({user_id: fb_id, type: 'visit'}).sort({start: -1}).exec(
+                    function (err, visits) {
+                        let userText = " USER: " + JSON.stringify(user, null, 4);
+                        let visitText = " VISIT: " + JSON.stringify(visits, null, 4);
+                        let answer = userText + visitText;
+
+                        return res.send("<pre>" + answer + "</pre>");
+
+                    });
+
         });
 
     });
-  
-
 
 
     app.post("/start", function (req, res) {
@@ -105,10 +100,10 @@ app.get("/users", function (request, response) {
         db.findOne({_id: json.fb_id}, function (err, user) {
             //console.log(err);
             if (user == null) {
-                //new user  
+                //new user
                 user = newUser(json);
             }
-          
+
             newVisit(user);
             return redirect(user);
         });
@@ -117,7 +112,7 @@ app.get("/users", function (request, response) {
         function newUser(user) {
             user._id = user.fb_id;
             user.type = 'user',
-            user.score = 0;
+                    user.score = 0;
             user.programm = 0;
             user.muscle_top = 1;
             user.muscle_middle = 1;
@@ -125,42 +120,48 @@ app.get("/users", function (request, response) {
 
             user.visit_first = new Date();
             user.visit_last = new Date();
-          
-          //Davidovsy
-          if (user.fb_id == "588a6503e4b012460e93828b" || user.fb_id == "5849c9f1e4b05a2c162d9b9a") {
-            user.programm = 0;
-            
-            user.muscle_top = 1;
-            user.muscle_middle = 1;
-            user.muscle_bottom = 1;
-          }
-          
+
+            //Davidovsy
+            if (user.fb_id == "588a6503e4b012460e93828b" || user.fb_id == "5849c9f1e4b05a2c162d9b9a") {
+                user.programm = 0;
+
+                user.muscle_top = 1;
+                user.muscle_middle = 1;
+                user.muscle_bottom = 1;
+            }
+
 
             console.log("Created user: " + JSON.stringify(user))
 
             db.insert(user);
             return user;
         }
-      
-      function newVisit(user) {
-         let visit = {
-           type : 'visit',
-           user_id : user._id,
-           programm : user.programm,
-           start : new Date(),
-           finished: false,
-           canceled: false,
-           exercises: []
-         }
-         
-         //set all other visits to finished but canceled
-         db.update({ type : 'visit', user_id : user._id, finished: false}, { $set: { finished: true, canceled: true } }, { multi: true }, function (err, numReplaced) {
 
-          });
-         
-         
-         db.insert(visit);
-      }
+        function newVisit(user) {
+            let visit = {
+                type: 'visit',
+                user_id: user._id,
+                programm: user.programm,
+                start: new Date(),
+                finish: new Date(),
+                finished: false,
+                canceled: false,
+                exercises: []
+            }
+
+            //set all other visits to finished but canceled
+            db.update({type: 'visit', user_id: user._id, finished: false}, {
+                $set: {
+                    finished: true,
+                    canceled: true
+                }
+            }, {multi: true}, function (err, numReplaced) {
+
+            });
+
+
+            db.insert(visit);
+        }
 
 
         function redirect(user) {
@@ -193,9 +194,20 @@ app.get("/users", function (request, response) {
 
         db.findOne({_id: json.fb_id}, function (err, user) {
             //console.log(err);
+            updateLastVisit(user._id);
 
             return calculateReps(user, json);
         });
+
+        function updateLastVisit(fb_id) {
+            db.findOne({user_id: fb_id, type: 'visit', finished: false}, function (err, visit) {
+                //console.log(err);
+                visit.finish = new Date();
+                db.update({_id: visit._id}, visit);
+                // log(visit, 'visit');
+
+            });
+        }
 
 
         function calculateReps(user, json) {
@@ -243,18 +255,42 @@ app.get("/users", function (request, response) {
 
             return react(user, json);
         });
-      
+
+        //returns FALSE, if it is too late
         function logExercise(user, json) {
-          //find unfinished visit
-            db.findOne({user_id: json.fb_id, type: 'visit', finished: false}, function (err, visit) {
-            //console.log(err);
-              visit.exercises.push({exercise: json.exercise, exercise_group:json.exercise_group, repsTodo: json.repsTodo, repsDone:json.repsDone});
-              
-              log(visit, "Exercise log");
-              
-              db.update({_id: visit._id}, visit);
-            log(visit, 'visit');
-          });
+            //find unfinished visit
+            let inTime = 'x';
+            db.findOne({user_id: json.fb_id, type: 'visit', finished: false}, inTime = function (err, visit) {
+                //console.log(err);
+                let expireDate = new Date(visit.finish);
+                expireDate.setSeconds(expireDate.getSeconds() + 15);
+                
+                if ((new Date()) > expireDate) {
+                    //hoursExpiredInput
+                    //Too Late!
+                    //console.log("Too Late!");
+                    inTime = false;
+                    return false;
+                }
+                visit.exercises.push({
+                    exercise: json.exercise,
+                    exercise_group: json.exercise_group,
+                    repsTodo: json.repsTodo,
+                    repsDone: json.repsDone
+                });
+              //console.log("in Time!");
+
+                //log(visit, "Exercise log");
+
+                db.update({_id: visit._id}, visit);
+                // log(visit, 'visit');
+              inTime = true;
+              return true;
+
+            });
+
+          
+            return inTime;
         }
 
         function react(user, json) {
@@ -262,31 +298,36 @@ app.get("/users", function (request, response) {
             if ((json.repsDone < 0) || (json.repsDone > 10 * json.repsTodo)) {
                 return sendReaction("ugly");
             }
-          
-          logExercise(user, json);
-          
-          let repsTodo = parseInt(json.repsTodo);
-          let repsDone = parseInt(json.repsDone);
 
-          let multiplier = 1;
-            if (user.programm == 0) {
-              console.log()
-                //division by 0
-              if (repsTodo > 0) {
-                  multiplier = repsDone / repsTodo;
-              }
-            } else {
-               if (repsDone > repsTodo)  {
-                   multiplier = 1.1;  
-               } else if (repsDone < repsTodo) {
-                 multiplier = 0.9;  
-               } else {
-                 multiplier = 1;
-               }
-              
-               
+            let inTime = logExercise(user, json);
+            if (!inTime) {
+                console.log("Too Late!");
+                return sendReaction('too_late');
             }
-            
+            console.log("In time!");
+
+            let repsTodo = parseInt(json.repsTodo);
+            let repsDone = parseInt(json.repsDone);
+
+            let multiplier = 1;
+            if (user.programm == 0) {
+                console.log()
+                //division by 0
+                if (repsTodo > 0) {
+                    multiplier = repsDone / repsTodo;
+                }
+            } else {
+                if (repsDone > repsTodo) {
+                    multiplier = 1.1;
+                } else if (repsDone < repsTodo) {
+                    multiplier = 0.9;
+                } else {
+                    multiplier = 1;
+                }
+
+
+            }
+
 
             let group_strength = 1;
             switch (json.exercise_group) {
@@ -303,23 +344,23 @@ app.get("/users", function (request, response) {
                     //bottom
             }
 
-          
+
             let score = parseInt(json.score_per_exercise);
             if (multiplier > 1) {
-              score = Math.round(score * 1.3);
+                score = Math.round(score * 1.3);
             } else if (multiplier < 1) {
-              score = Math.round(score * 0.8);
+                score = Math.round(score * 0.8);
             }
             user.score = parseInt(user.score) + parseInt(score);
-          
+
             db.update({_id: json.fb_id}, user);
 
             let reaction = multiplier < 1 ? "bad" : "good";
 
             return sendReaction(reaction);
         }
-      
-          function sendReaction(reaction) {
+
+        function sendReaction(reaction) {
             let answer = {
                 "set_attributes": {
                     "reaction": reaction,
@@ -329,8 +370,8 @@ app.get("/users", function (request, response) {
             return res.json(answer);
         }
     });
-  
- app.post("/finish", function (req, res) {
+
+    app.post("/finish", function (req, res) {
         //{"fb_id":"5849c9f1e4b05a2c162d9b9a","exercise":"1","exercise_group":"top","exercise_norm":"10","repsTodo":"10","repsDone":"6"}
         console.log("finish Received POST: " + JSON.stringify(req.body));
         if (!req.body.fb_id) {
@@ -348,26 +389,29 @@ app.get("/users", function (request, response) {
 
         function finish(user, json) {
 
-           let day_summary = "normal"; 
-           if (user.score >= json.score_finish) {
-              user.programm += 1;
-             day_summary = "levelup";
-             // If levelup set score to 0
-             user.score = 0;
+            let day_summary = "normal";
+            if (user.score >= json.score_finish) {
+                user.programm += 1;
+                day_summary = "levelup";
+                // If levelup set score to 0
+                user.score = 0;
             }
             db.update({_id: json.fb_id}, user);
 
             //Finish current visit
-             db.update({ type : 'visit', user_id : user._id, finished: false}, { $set: { finished: true } }, { multi: false }, function (err, numReplaced) {
+            db.update({
+                type: 'visit',
+                user_id: user._id,
+                finished: false
+            }, {$set: {finished: true}}, {multi: false}, function (err, numReplaced) {
 
             });
 
-            
 
             return sendDaySummary(day_summary);
         }
-      
-          function sendDaySummary(day_summary) {
+
+        function sendDaySummary(day_summary) {
             let answer = {
                 "set_attributes": {
                     "day_summary": day_summary,
@@ -377,8 +421,6 @@ app.get("/users", function (request, response) {
             return res.json(answer);
         }
     });
-  
-
 
 
 };
@@ -387,5 +429,8 @@ app.get("/users", function (request, response) {
 function log(user, hint = "") {
     console.log(hint + ": " + JSON.stringify(user));
 }
+
+let hoursExpiredInput = 2;
+let hoursExpiredVisit = 20;
 
 module.exports = routes;
