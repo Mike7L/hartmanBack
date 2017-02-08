@@ -5,11 +5,11 @@
 
 var routes = function (app, db) {
 
-    /*
-     app.get("/", function (request, response) {
-     response.sendFile(__dirname + '/views/index.html');
-     });
-     */
+
+    app.get("/", function (request, response) {
+        response.sendFile(__dirname + '/views/index.html');
+    });
+
 
     app.get("/users", function (request, response) {
         var dbUsers = [];
@@ -72,14 +72,14 @@ var routes = function (app, db) {
             var text = JSON.stringify(user, null, 4);
 
             db.find({user_id: fb_id, type: 'visit'}).sort({start: -1}).exec(
-                    function (err, visits) {
-                        let userText = " USER: " + JSON.stringify(user, null, 4);
-                        let visitText = " VISIT: " + JSON.stringify(visits, null, 4);
-                        let answer = userText + visitText;
+                function (err, visits) {
+                    let userText = " USER: " + JSON.stringify(user, null, 4);
+                    let visitText = " VISIT: " + JSON.stringify(visits, null, 4);
+                    let answer = userText + visitText;
 
-                        return res.send("<pre>" + answer + "</pre>");
+                    return res.send("<pre>" + answer + "</pre>");
 
-                    });
+                });
 
         });
 
@@ -112,7 +112,7 @@ var routes = function (app, db) {
         function newUser(user) {
             user._id = user.fb_id;
             user.type = 'user',
-                    user.score = 0;
+                user.score = 0;
             user.programm = 0;
             user.muscle_top = 1;
             user.muscle_middle = 1;
@@ -224,7 +224,7 @@ var routes = function (app, db) {
                     group_strength = user.muscle_bottom;
                     break;
                 default:
-                    //bottom
+                //bottom
             }
 
             let repsTodo = Math.round(group_strength * json.exercise_norm);
@@ -264,7 +264,7 @@ var routes = function (app, db) {
                 //console.log(err);
                 let expireDate = new Date(visit.finish);
                 expireDate.setSeconds(expireDate.getSeconds() + 15);
-                
+
                 if ((new Date()) > expireDate) {
                     //hoursExpiredInput
                     //Too Late!
@@ -278,18 +278,18 @@ var routes = function (app, db) {
                     repsTodo: json.repsTodo,
                     repsDone: json.repsDone
                 });
-              //console.log("in Time!");
+                //console.log("in Time!");
 
                 //log(visit, "Exercise log");
 
                 db.update({_id: visit._id}, visit);
                 // log(visit, 'visit');
-              inTime = true;
-              return true;
+                inTime = true;
+                return true;
 
             });
 
-          
+
             return inTime;
         }
 
@@ -341,7 +341,7 @@ var routes = function (app, db) {
                     user.muscle_bottom *= multiplier;
                     break;
                 default:
-                    //bottom
+                //bottom
             }
 
 
