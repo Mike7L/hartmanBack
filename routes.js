@@ -1,6 +1,6 @@
 //
 // This defines three routes that our API is going to use.
-// TEST 22‰
+// TEST 22
 
 
 var routes = function (app, db) {
