@@ -26,7 +26,7 @@ var routes = require("./routes.js")(app, db);
 
 let port = process.env.PORT || 3000;
 
-// listen for requests :)
+// listen for requests :) TEST 6
 var listener = app.listen(port, function () {
   console.log('Your app is listening on port ' + listener.address().port);
 });
