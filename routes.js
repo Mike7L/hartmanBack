@@ -28,7 +28,7 @@ var routes = function (app, db) {
     });
 
     app.post("/reset", function (req, res) {
-        console.log("reset Received Post: " + JSON.stringify(req.query));
+        console.log("reset Received Post: " + JSON.stringify(req.body));
         if (!req.body.fb_id) {
             console.log("Received incomplete POST: " + JSON.stringify(req.body));
             return res.send({"status": "error", "message": "missing parameter(s)"});
