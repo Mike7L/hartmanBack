@@ -93,7 +93,9 @@ app.get("/clear", function (request, response) {
 });
 
 // listen for requests :)
-var listener = app.listen(process.env.PORT, function () {
+let port = process.env.PORT || 3000;
+
+var listener = app.listen(port, function () {
   console.log('Your app is listening on port ' + listener.address().port);
 });
 
