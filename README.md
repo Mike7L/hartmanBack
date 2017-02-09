@@ -9,6 +9,8 @@ To test this project:
 ### With curl
 curl -H "Content-Type: application/json" -X POST -d '{"username":"test","data":"1234"}' http://rest-api.gomix.me/update
 
+test
+
 ### In a web browser
 In a new tab, go to: https://rest-api.gomix.me/update?username=testUser&data=1234
 
