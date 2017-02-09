@@ -87,6 +87,7 @@ var routes = function (app, db) {
 
 
     app.post("/start", function (req, res) {
+        //{"fb_id":"5893c694e4b082e100c072d4","fb_gender":"male","fb_first_name":"Micha","fb_last_name":"Volin","fb_locale":"de_DE","fb_timezone":"1"}
         console.log("start Received POST: " + JSON.stringify(req.body));
 
         if (!req.body.fb_id) {
