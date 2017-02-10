@@ -47,6 +47,7 @@ var routes = function (app, db) {
             };
 
             console.log("User removed:" + req.body.fb_id);
+            //TODO: Do all res.json from one funtion
             return res.json(message);
         });
 
@@ -121,7 +122,7 @@ var routes = function (app, db) {
             user.visit_last = new Date();
 
             //Davidovsy
-            if (user.fb_id == "588a6503e4b012460e93828b" || user.fb_id == "5893c694e4b082e100c072d4") {
+            if (isDev(user.fb_id)) {
                 user.programm = 0;
 
                 user.muscle_top = 1;
@@ -182,6 +183,9 @@ var routes = function (app, db) {
                     //log
                     //console.log(currentDate.toUTCString(),(new Date(lastVisit.finish)).toUTCString(), lastVisitMidnight.toUTCString(), dayAfterLastVisitMidnight.toUTCString(), tooEarly, tooLate);
                 }
+
+                // it's never too Early for us
+                tooEarly = tooEarly || isDev(user.fb_id);
 
                 if (!tooEarly) {
                     newVisit(user);
@@ -471,6 +475,11 @@ function log(user, hint = "") {
 
 
 let hoursExpiredInput = 2;
-let hoursExpiredVisit = 20;
+
+
+function isDev(id) {
+
+    return (id == "588a6503e4b012460e93828b" || id == "5893c694e4b082e100c072d4");
+}
 
 module.exports = routes;
