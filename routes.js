@@ -55,23 +55,23 @@ var routes = function (app, db) {
     });
 
 
-    app.post("/setdev", function (req, res) {
-        console.log("setdev Received Post: " + JSON.stringify(req.body));
-        if (!req.body.fb_id) {
-            console.log("Received incomplete POST: " + JSON.stringify(req.body));
+    app.get("/setdev", function (req, res) {
+        console.log("setdev Received Post: " + JSON.stringify(req.query));
+        if (!req.query.fb_id) {
+            console.log("Received incomplete POST: " + JSON.stringify(req.query));
             return res.send({"status": "error", "message": "missing parameter(s)"});
         }
 
-        var  is_dev = req.body.is_dev === "true";
+        var  is_dev = req.query.is_dev === "true";
 
-        db.update({_id: req.body.fb_id}, {$set: {"is_dev": is_dev}}, function (err) {
+        db.update({_id: req.query.fb_id}, {$set: {"is_dev": is_dev}}, function (err) {
             let message = {
                 "messages": [
                     {"text": is_dev ? "You are GOD now!" : "You are NOTHING now!"},
                 ]
             };
 
-            console.log((is_dev ? "You are GOD now!" : "You are NOTHING now!") + req.body.fb_id);
+            console.log((is_dev ? "You are GOD now!" : "You are NOTHING now!") + req.query.fb_id);
             return sendJsonBack(res, message);
         });
 
