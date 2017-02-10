@@ -104,8 +104,7 @@ var routes = function (app, db) {
                 user = newUser(json);
             }
 
-            newVisit(user);
-            return redirect(user);
+            cancelUnfinishedVisits(user, isTheVisitOnTime);
         });
 
 
@@ -122,7 +121,7 @@ var routes = function (app, db) {
             user.visit_last = new Date();
 
             //Davidovsy
-            if (user.fb_id == "588a6503e4b012460e93828b" || user.fb_id == "5849c9f1e4b05a2c162d9b9a") {
+            if (user.fb_id == "588a6503e4b012460e93828b" || user.fb_id == "5893c694e4b082e100c072d4") {
                 user.programm = 0;
 
                 user.muscle_top = 1;
@@ -137,6 +136,55 @@ var routes = function (app, db) {
             return user;
         }
 
+        function cancelUnfinishedVisits(user, callback) {
+
+            //set all unfinished visits to finished but canceled
+            db.update({type: 'visit', user_id: user._id, finished: false}, {
+                $set: {
+                    finished: true,
+                    canceled: true
+                }
+            }, {multi: true}, (err, numReplaced) => {
+                callback(user);
+            });
+        }
+
+
+        function isTheVisitOnTime(user, callback) {
+            //Find the last visit
+            db.findOne({user_id: user.fb_id, type: 'visit'})
+                .sort({finish: -1}).exec(function (err, lastVisit) {
+                //console.log("His last visit was: " + JSON.stringify(docs));
+
+                function dateAdd24(oldDate) {
+                    let newDate = new Date(oldDate);
+                    newDate.setHours(newDate.getHours() + 24);
+                    return (new Date(newDate));
+                }
+
+                let currentDate = new Date();
+                //Test Current Date
+                //currentDate.setHours(currentDate.getHours() + 56);
+
+                let lastVisitDate = new Date((new Date(lastVisit.finish)).setHours(0, 0, 0, 0));
+                let lastVisitMidnight = dateAdd24(lastVisitDate);
+                let dayAfterLastVisitMidnight = dateAdd24(dateAdd24(lastVisitDate));
+                //---(lastVisit)--(tooEarly)--(lastVisitMidnight)|-------(inTime)-----(dayAfterLastVisitMidnight)|(tooLate)----....
+                let tooEarly = (currentDate < lastVisitMidnight);
+                let tooLate = (currentDate > dayAfterLastVisitMidnight);
+
+                //log
+                //console.log(currentDate.toUTCString(),(new Date(lastVisit.finish)).toUTCString(), lastVisitMidnight.toUTCString(), dayAfterLastVisitMidnight.toUTCString(), tooEarly, tooLate);
+
+                if (!tooEarly) {
+                    newVisit(user);
+                }
+
+                return redirect(user, tooEarly, tooLate);
+                //redirect(user);
+            });
+        }
+
         function newVisit(user) {
             let visit = {
                 type: 'visit',
@@ -149,30 +197,20 @@ var routes = function (app, db) {
                 exercises: []
             }
 
-            //set all other visits to finished but canceled
-            db.update({type: 'visit', user_id: user._id, finished: false}, {
-                $set: {
-                    finished: true,
-                    canceled: true
-                }
-            }, {multi: true}, function (err, numReplaced) {
-
-            });
-
 
             db.insert(visit);
         }
 
 
-        function redirect(user) {
+        function redirect(user, too_early = false, tooLate = false) {
 
             console.log("redirecting " + user.fb_first_name + " to " + user.programm);
 
-
             let answer = {
                 "set_attributes": {
-                    "timing": "in_time",
-                    "programm": user.programm
+                    "too_early": too_early ? "true" : "false",
+                    "programm": too_early ? "null" : user.programm.toString(),
+                    "punishment": tooLate ? "true" : "false",
                 }
             };
 
@@ -253,7 +291,7 @@ var routes = function (app, db) {
         db.findOne({_id: json.fb_id}, function (err, user) {
             //console.log(err);
 
-            return react(user, json);
+            logExercise(user, json);
         });
 
         //returns FALSE, if it is too late
@@ -262,30 +300,26 @@ var routes = function (app, db) {
             let inTime = 'x';
             db.findOne({user_id: json.fb_id, type: 'visit', finished: false}, inTime = function (err, visit) {
                 //console.log(err);
-                let expireDate = new Date(visit.finish);
-                expireDate.setSeconds(expireDate.getSeconds() + 15);
 
-                if ((new Date()) > expireDate) {
+                if (isDateExpired(visit.finish, hoursExpiredInput)) {
                     //hoursExpiredInput
-                    //Too Late!
-                    //console.log("Too Late!");
-                    inTime = false;
-                    return false;
+                    console.log("Too Late!");
+                    return sendReaction('too_late');
                 }
+
+                console.log("in Time! ");
                 visit.exercises.push({
                     exercise: json.exercise,
                     exercise_group: json.exercise_group,
                     repsTodo: json.repsTodo,
                     repsDone: json.repsDone
                 });
-                //console.log("in Time!");
 
-                //log(visit, "Exercise log");
 
                 db.update({_id: visit._id}, visit);
                 // log(visit, 'visit');
-                inTime = true;
-                return true;
+
+                react(user, json);
 
             });
 
@@ -298,13 +332,6 @@ var routes = function (app, db) {
             if ((json.repsDone < 0) || (json.repsDone > 10 * json.repsTodo)) {
                 return sendReaction("ugly");
             }
-
-            let inTime = logExercise(user, json);
-            if (!inTime) {
-                console.log("Too Late!");
-                return sendReaction('too_late');
-            }
-            console.log("In time!");
 
             let repsTodo = parseInt(json.repsTodo);
             let repsDone = parseInt(json.repsDone);
@@ -329,7 +356,6 @@ var routes = function (app, db) {
             }
 
 
-            let group_strength = 1;
             switch (json.exercise_group) {
                 case "top":
                     user.muscle_top *= multiplier;
@@ -341,7 +367,7 @@ var routes = function (app, db) {
                     user.muscle_bottom *= multiplier;
                     break;
                 default:
-                //bottom
+                    console.log("unknown muscle group!");
             }
 
 
@@ -425,10 +451,17 @@ var routes = function (app, db) {
 
 };
 
+function isDateExpired(date, hoursToExpire = 1) {
+    let expireDate = new Date(date);
+    expireDate.setHours(expireDate.getHours() + hoursToExpire);
+    return ((new Date()) > expireDate);
+}
+
 
 function log(user, hint = "") {
     console.log(hint + ": " + JSON.stringify(user));
 }
+
 
 let hoursExpiredInput = 2;
 let hoursExpiredVisit = 20;
