@@ -149,6 +149,12 @@ var routes = function (app, db) {
             });
         }
 
+        function dateAdd24(oldDate) {
+            let newDate = new Date(oldDate);
+            newDate.setHours(newDate.getHours() + 24);
+            return (new Date(newDate));
+        }
+
 
         function isTheVisitOnTime(user, callback) {
             //Find the last visit
@@ -156,25 +162,24 @@ var routes = function (app, db) {
                 .sort({finish: -1}).exec(function (err, lastVisit) {
                 //console.log("His last visit was: " + JSON.stringify(docs));
 
-                function dateAdd24(oldDate) {
-                    let newDate = new Date(oldDate);
-                    newDate.setHours(newDate.getHours() + 24);
-                    return (new Date(newDate));
+                let tooEarly = false;
+                let tooLate = false;
+
+                if (lastVisit !== null) {
+                    let currentDate = new Date();
+                    //Test Current Date
+                    //currentDate.setHours(currentDate.getHours() + 56);
+
+                    let lastVisitDate = new Date((new Date(lastVisit.finish)).setHours(0, 0, 0, 0));
+                    let lastVisitMidnight = dateAdd24(lastVisitDate);
+                    let dayAfterLastVisitMidnight = dateAdd24(dateAdd24(lastVisitDate));
+                    //---(lastVisit)--(tooEarly)--(lastVisitMidnight)|-------(inTime)-----(dayAfterLastVisitMidnight)|(tooLate)----....
+                    tooEarly = (currentDate < lastVisitMidnight);
+                    tooLate = (currentDate > dayAfterLastVisitMidnight);
+
+                    //log
+                    //console.log(currentDate.toUTCString(),(new Date(lastVisit.finish)).toUTCString(), lastVisitMidnight.toUTCString(), dayAfterLastVisitMidnight.toUTCString(), tooEarly, tooLate);
                 }
-
-                let currentDate = new Date();
-                //Test Current Date
-                //currentDate.setHours(currentDate.getHours() + 56);
-
-                let lastVisitDate = new Date((new Date(lastVisit.finish)).setHours(0, 0, 0, 0));
-                let lastVisitMidnight = dateAdd24(lastVisitDate);
-                let dayAfterLastVisitMidnight = dateAdd24(dateAdd24(lastVisitDate));
-                //---(lastVisit)--(tooEarly)--(lastVisitMidnight)|-------(inTime)-----(dayAfterLastVisitMidnight)|(tooLate)----....
-                let tooEarly = (currentDate < lastVisitMidnight);
-                let tooLate = (currentDate > dayAfterLastVisitMidnight);
-
-                //log
-                //console.log(currentDate.toUTCString(),(new Date(lastVisit.finish)).toUTCString(), lastVisitMidnight.toUTCString(), dayAfterLastVisitMidnight.toUTCString(), tooEarly, tooLate);
 
                 if (!tooEarly) {
                     newVisit(user);
