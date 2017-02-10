@@ -48,7 +48,7 @@ var routes = function (app, db) {
 
             console.log("User removed:" + req.body.fb_id);
             //TODO: Do all res.json from one funtion
-            return res.json(message);
+            return sendJsonBack(res, message);
         });
 
 
@@ -185,7 +185,7 @@ var routes = function (app, db) {
                 }
 
                 // it's never too Early for us
-                tooEarly = tooEarly || isDev(user.fb_id);
+                tooEarly = isDev(user.fb_id) ? false : tooEarly;
 
                 if (!tooEarly) {
                     newVisit(user);
@@ -225,7 +225,7 @@ var routes = function (app, db) {
                 }
             };
 
-            return res.json(answer);
+            return sendJsonBack(res, answer);
         }
 
 
@@ -284,7 +284,7 @@ var routes = function (app, db) {
                 }
             };
 
-            return res.json(answer);
+            return sendJsonBack(res, answer);
         }
     });
 
@@ -404,7 +404,7 @@ var routes = function (app, db) {
                 }
             };
 
-            return res.json(answer);
+            return sendJsonBack(res, answer);
         }
     });
 
@@ -455,10 +455,15 @@ var routes = function (app, db) {
                 }
             };
 
-            return res.json(answer);
+            return sendJsonBack(res, answer);
         }
     });
 
+
+    function sendJsonBack(res, json) {
+        console.log("sendJsonBack" + JSON.stringify(json));
+        return res.json(json);
+    }
 
 };
 
