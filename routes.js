@@ -55,6 +55,30 @@ var routes = function (app, db) {
     });
 
 
+    app.post("/setdev", function (req, res) {
+        console.log("setdev Received Post: " + JSON.stringify(req.body));
+        if (!req.body.fb_id) {
+            console.log("Received incomplete POST: " + JSON.stringify(req.body));
+            return res.send({"status": "error", "message": "missing parameter(s)"});
+        }
+
+        var  is_dev = req.body.is_dev === "true";
+
+        db.update({_id: req.body.fb_id}, {$set: {"is_dev": is_dev}}, function (err) {
+            let message = {
+                "messages": [
+                    {"text": is_dev ? "You are GOD now!" : "You are NOTHING now!"},
+                ]
+            };
+
+            console.log((is_dev ? "You are GOD now!" : "You are NOTHING now!") + req.body.fb_id);
+            return sendJsonBack(res, message);
+        });
+
+
+    });
+
+
     app.get("/showStats", function (req, res) {
         //https://hartmanback.gomix.me/showStats?fb_id=5849c9f1e4b05a2c162d9b9a
         console.log("showStats Received Get: " + JSON.stringify(req.query));
@@ -111,8 +135,13 @@ var routes = function (app, db) {
 
         function newUser(user) {
             user._id = user.fb_id;
-            user.type = 'user',
-                user.score = 0;
+            user.type = 'user';
+
+            user.is_dev = false;
+
+            user.score = 0;
+            user.achievements = [];
+
             user.programm = 0;
             user.muscle_top = 1;
             user.muscle_middle = 1;
@@ -121,21 +150,27 @@ var routes = function (app, db) {
             user.visit_first = new Date();
             user.visit_last = new Date();
 
-            //Davidovsy
-            if (isDev(user.fb_id)) {
-                user.programm = 0;
-
-                user.muscle_top = 1;
-                user.muscle_middle = 1;
-                user.muscle_bottom = 1;
-            }
-
-
-            console.log("Created user: " + JSON.stringify(user))
+            console.log("Created user: " + JSON.stringify(user));
 
             db.insert(user);
             return user;
         }
+
+        function newVisit(user) {
+            let visit = {
+                type: 'visit',
+                user_id: user._id,
+                programm: user.programm,
+                start: new Date(),
+                finish: new Date(),
+                finished: false,
+                canceled: false,
+                exercises: []
+            };
+
+            db.insert(visit);
+        }
+
 
         function cancelUnfinishedVisits(user, callback) {
 
@@ -185,7 +220,7 @@ var routes = function (app, db) {
                 }
 
                 // it's never too Early for us
-                tooEarly = isDev(user.fb_id) ? false : tooEarly;
+                tooEarly = user.is_dev ? false : tooEarly;
 
                 if (!tooEarly) {
                     newVisit(user);
@@ -194,22 +229,6 @@ var routes = function (app, db) {
                 return redirect(user, tooEarly, tooLate);
                 //redirect(user);
             });
-        }
-
-        function newVisit(user) {
-            let visit = {
-                type: 'visit',
-                user_id: user._id,
-                programm: user.programm,
-                start: new Date(),
-                finish: new Date(),
-                finished: false,
-                canceled: false,
-                exercises: []
-            }
-
-
-            db.insert(visit);
         }
 
 
@@ -482,9 +501,6 @@ function log(user, hint = "") {
 let hoursExpiredInput = 2;
 
 
-function isDev(id) {
 
-    return (id == "588a6503e4b012460e93828b" || id == "5893c694e4b082e100c072d4");
-}
 
 module.exports = routes;
