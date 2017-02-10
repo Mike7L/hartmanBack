@@ -138,6 +138,8 @@ var routes = function (app, db) {
 
         function cancelUnfinishedVisits(user, callback) {
 
+            //TODO: if user accidentally starts the visit over again... try to find the current visit?
+
             //set all unfinished visits to finished but canceled
             db.update({type: 'visit', user_id: user._id, finished: false}, {
                 $set: {
