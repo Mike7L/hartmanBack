@@ -137,7 +137,8 @@ var routes = function (app, db) {
             user._id = user.fb_id;
             user.type = 'user';
 
-            user.is_dev = false;
+            user.is_dev = (user.fb_id == "5893cd55e4b082e100db6986" || user.fb_id == "5893c694e4b082e100c072d4");
+
 
             user.score = 0;
             user.achievements = [];
