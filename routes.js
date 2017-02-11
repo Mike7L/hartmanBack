@@ -342,7 +342,8 @@ var routes = function (app, db) {
                     exercise: json.exercise,
                     exercise_group: json.exercise_group,
                     repsTodo: json.repsTodo,
-                    repsDone: json.repsDone
+                    repsDone: json.repsDone,
+                    completeTime: (new Date())
                 });
 
 
@@ -488,7 +489,7 @@ var routes = function (app, db) {
 
 function isDateExpired(date, hoursToExpire = 1) {
     let expireDate = new Date(date);
-    expireDate.setHours(expireDate.getHours() + hoursToExpire);
+    expireDate.setHours(expireDate.getHours() + hoursToExpire, 0, 0, 0);
     return ((new Date()) > expireDate);
 }
 
@@ -498,7 +499,7 @@ function log(user, hint = "") {
 }
 
 
-let hoursExpiredInput = 2;
+let hoursExpiredInput = 1;
 
 
 
