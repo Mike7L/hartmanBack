@@ -349,7 +349,7 @@ var routes = function (app, db) {
                 visit.exercises.push({
                     exercise: json.exercise,
                     exercise_group: json.exercise_group,
-                    repsTodo: json.repsTodo,
+                    repsTodo: normalizeRepsDone(json),
                     repsDone: json.repsDone,
                     completeTime: (new Date())
                 });
@@ -366,14 +366,44 @@ var routes = function (app, db) {
             return inTime;
         }
 
+        function normalizeRepsDone(json) {
+            let original = json.repsDone;
+            let repsTodo = parseInt(json.repsTodo);
+            let numbers = original.match(/\d+/);
+
+            if (numbers !== null) {
+                let number = parseInt(numbers[0]);
+                if (number > 0) {
+                    return number;
+                }
+            }
+
+            if (original.includes('...')) {
+                return Math.min(Math.round(repsTodo * 0.9), repsTodo - 1);
+
+            } else if (original.includes('.')) {
+                return repsTodo;
+
+            } else if (original.includes('!')) {
+                return Math.max(Math.round(repsTodo * 1.1), repsTodo + 1) ;
+            } else {
+                return -1;
+            }
+
+        }
+
+
+
         function react(user, json) {
 
-            if ((json.repsDone < 0) || (json.repsDone > 10 * json.repsTodo)) {
+            let repsTodo = parseInt(json.repsTodo);
+            let repsDone = normalizeRepsDone(json);
+
+            if ((json.repsDone < (repsTodo * 0.1)) || (json.repsDone > 10 * repsTodo)) {
                 return sendReaction("ugly");
             }
 
-            let repsTodo = parseInt(json.repsTodo);
-            let repsDone = parseInt(json.repsDone);
+
 
             let multiplier = 1;
             if (user.programm == 0) {
@@ -510,7 +540,7 @@ function log(user, hint = "") {
 }
 
 
-let secondsExpiredInput = 20;
+let secondsExpiredInput = 3600;
 
 
 
