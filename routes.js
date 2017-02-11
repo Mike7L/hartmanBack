@@ -352,6 +352,7 @@ var routes = function (app, db) {
                     exercise_group: json.exercise_group,
                     repsTodo: json.repsTodo,
                     repsDone: normalizeRepsDone(json),
+                    repsDoneOriginal: json.repsDone,
                     completeTime: (new Date())
                 });
 
