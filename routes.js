@@ -195,8 +195,8 @@ var routes = function (app, db) {
 
 
         function isTheVisitOnTime(user, callback) {
-            //Find the last visit
-            db.findOne({user_id: user.fb_id, type: 'visit'})
+            //Find the last visit, that not cancelled is
+            db.findOne({user_id: user.fb_id, type: 'visit', canceled: false})
                 .sort({finish: -1}).exec(function (err, lastVisit) {
                 //console.log("His last visit was: " + JSON.stringify(docs));
 
@@ -327,14 +327,21 @@ var routes = function (app, db) {
         //returns FALSE, if it is too late
         function logExercise(user, json) {
             //find unfinished visit
+            //TODO: visit null ?
             let inTime = 'x';
             db.findOne({user_id: json.fb_id, type: 'visit', finished: false}, inTime = function (err, visit) {
                 //console.log(err);
 
-                if (isDateExpired(visit.finish, hoursExpiredInput)) {
-                    //hoursExpiredInput
-                    console.log("Too Late!");
-                    return sendReaction('too_late');
+                if (isDateExpired(visit.finish, secondsExpiredInput)) {
+                    //Visit is EXPIRED !!! Cancel it! Finish it!
+                    db.update({_id: visit._id},
+                        {$set: {canceled: true, finished: true}},
+                        {multi: false} ,
+                        function (err, numReplaced) {
+                            console.log("Too Late!");
+                            return sendReaction('too_late');
+                            });
+                    return;
                 }
 
                 console.log("in Time! ");
@@ -487,19 +494,22 @@ var routes = function (app, db) {
 
 };
 
-function isDateExpired(date, hoursToExpire = 1) {
-    let expireDate = new Date(date);
-    expireDate.setHours(expireDate.getHours() + hoursToExpire, 0, 0, 0);
+
+function isDateExpired(date, secondsToExpire = (3600)) {
+
+
+    let expireDate = new Date(date.getTime() + secondsToExpire * 1000);
+
+    console.log(date, expireDate);
     return ((new Date()) > expireDate);
 }
-
 
 function log(user, hint = "") {
     console.log(hint + ": " + JSON.stringify(user));
 }
 
 
-let hoursExpiredInput = 1;
+let secondsExpiredInput = 20;
 
 
 
