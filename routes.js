@@ -156,7 +156,7 @@ var routes = function (app, db) {
             return user;
         }
 
-        function newVisit(user) {
+        function newVisit(user, tooLate = false) {
             let visit = {
                 type: 'visit',
                 user_id: user._id,
@@ -165,6 +165,7 @@ var routes = function (app, db) {
                 finish: new Date(),
                 finished: false,
                 canceled: false,
+                punished: tooLate,
                 exercises: []
             };
 
@@ -223,7 +224,7 @@ var routes = function (app, db) {
                 tooEarly = user.is_dev ? false : tooEarly;
 
                 if (!tooEarly) {
-                    newVisit(user);
+                    newVisit(user, tooLate);
                 }
 
                 return redirect(user, tooEarly, tooLate);
