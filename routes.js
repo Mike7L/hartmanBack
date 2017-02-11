@@ -350,8 +350,8 @@ var routes = function (app, db) {
                 visit.exercises.push({
                     exercise: json.exercise,
                     exercise_group: json.exercise_group,
-                    repsTodo: normalizeRepsDone(json),
-                    repsDone: json.repsDone,
+                    repsTodo: json.repsTodo,
+                    repsDone: normalizeRepsDone(json),
                     completeTime: (new Date())
                 });
 
