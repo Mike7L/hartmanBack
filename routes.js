@@ -399,7 +399,7 @@ var routes = function (app, db) {
             let repsTodo = parseInt(json.repsTodo);
             let repsDone = normalizeRepsDone(json);
 
-            if ((json.repsDone < (repsTodo * 0.1)) || (json.repsDone > 10 * repsTodo)) {
+            if ((repsDone < (repsTodo * 0.1)) || (repsDone > 10 * repsTodo)) {
                 return sendReaction("ugly");
             }
 
