@@ -31,6 +31,13 @@ var routes = function (app, db) {
         });
     });
 
+    app.get("/showDatabase", function (req, res) {
+        fs = require('fs');
+        fs.readFile('.data/datafile', 'utf8', (err, data) => {
+            return res.send(data);
+        });
+    });
+
     app.post("/reset", function (req, res) {
         console.log("reset Received Post: " + JSON.stringify(req.body));
         if (!req.body.fb_id) {
@@ -66,7 +73,7 @@ var routes = function (app, db) {
             return res.send({"status": "error", "message": "missing parameter(s)"});
         }
 
-        var  is_dev = req.query.is_dev === "true";
+        var is_dev = req.query.is_dev === "true";
 
         db.update({_id: req.query.fb_id}, {$set: {"is_dev": is_dev}}, function (err) {
             let message = {
@@ -342,11 +349,11 @@ var routes = function (app, db) {
                     //Visit is EXPIRED !!! Cancel it! Finish it!
                     db.update({_id: visit._id},
                         {$set: {canceled: true, finished: true}},
-                        {multi: false} ,
+                        {multi: false},
                         function (err, numReplaced) {
                             console.log("Too Late!");
                             return sendReaction('too_late');
-                            });
+                        });
                     return;
                 }
 
@@ -391,13 +398,12 @@ var routes = function (app, db) {
                 return repsTodo;
 
             } else if (original.includes('!')) {
-                return Math.max(Math.round(repsTodo * 1.1), repsTodo + 1) ;
+                return Math.max(Math.round(repsTodo * 1.1), repsTodo + 1);
             } else {
                 return -1;
             }
 
         }
-
 
 
         function react(user, json) {
@@ -408,7 +414,6 @@ var routes = function (app, db) {
             if ((repsDone < (repsTodo * 0.1)) || (repsDone > 10 * repsTodo)) {
                 return sendReaction("ugly");
             }
-
 
 
             let multiplier = 1;
@@ -530,11 +535,11 @@ var routes = function (app, db) {
 
     function findStreak(visits, streakLengthWanted) {
         var streakLength = 0;
-        log(visits,'efd');
+        log(visits, 'efd');
         for (let i = 1; i < visits.length; i++) {
             let lastMoment = moment(visits[i - 1].start);
             let currentMoment = moment(visit.start);
-            log([lastMoment,currentMoment], 'findStreak');
+            log([lastMoment, currentMoment], 'findStreak');
             if (currentMoment.diff(lastMoment, 'days') === 1) {
                 streakLength += 1;
             } else {
@@ -552,10 +557,10 @@ var routes = function (app, db) {
         $func = [];
 
         func['streak3'] = (visits) => {
-            return visits.every( (visit, index, visits) => {
+            return visits.every((visit, index, visits) => {
 
                 return (index > 3 || moment(visit.start).diff(moment));
-            } );
+            });
         }
 
 
@@ -577,7 +582,6 @@ var routes = function (app, db) {
 };
 
 
-
 function isDateExpired(date, secondsToExpire = (3600)) {
 
 
@@ -588,13 +592,11 @@ function isDateExpired(date, secondsToExpire = (3600)) {
 }
 
 function log(object, hint = "") {
-    console.log(hint + ": " + JSON.stringify(object,null,'\t'));
+    console.log(hint + ": " + JSON.stringify(object, null, '\t'));
 }
 
 
 let secondsExpiredInput = 3600;
-
-
 
 
 module.exports = routes;
