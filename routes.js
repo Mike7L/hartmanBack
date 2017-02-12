@@ -5,6 +5,10 @@
 
 var routes = function (app, db) {
 
+
+    var moment = require('moment');
+    moment.locale('de');
+
     app.get("/", function (request, response) {
         response.sendFile(__dirname + '/views/index.html');
     });
@@ -350,7 +354,7 @@ var routes = function (app, db) {
                 visit.exercises.push({
                     exercise: json.exercise,
                     exercise_group: json.exercise_group,
-                    repsTodo: json.repsTodo,
+                    repsTodo: parseInt(json.repsTodo),
                     repsDone: normalizeRepsDone(json),
                     repsDoneOriginal: json.repsDone,
                     completeTime: (new Date())
@@ -480,7 +484,6 @@ var routes = function (app, db) {
 
         db.findOne({_id: json.fb_id}, function (err, user) {
             //console.log(err);
-
             return finish(user, json);
         });
 
@@ -504,8 +507,8 @@ var routes = function (app, db) {
 
             });
 
+            giveAchievements(user, day_summary, sendDaySummary);
 
-            return sendDaySummary(day_summary);
         }
 
         function sendDaySummary(day_summary) {
@@ -525,7 +528,54 @@ var routes = function (app, db) {
         return res.json(json);
     }
 
+    function findStreak(visits, streakLengthWanted) {
+        var streakLength = 0;
+        log(visits,'efd');
+        for (let i = 1; i < visits.length; i++) {
+            let lastMoment = moment(visits[i - 1].start);
+            let currentMoment = moment(visit.start);
+            log([lastMoment,currentMoment], 'findStreak');
+            if (currentMoment.diff(lastMoment, 'days') === 1) {
+                streakLength += 1;
+            } else {
+                streakLength = 0;
+            }
+
+            if (streakLength === streakLengthWanted) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function getAchievementFuctions() {
+        $func = [];
+
+        func['streak3'] = (visits) => {
+            return visits.every( (visit, index, visits) => {
+
+                return (index > 3 || moment(visit.start).diff(moment));
+            } );
+        }
+
+
+    }
+
+    function giveAchievements(user, day_summary, callback) {
+        let achievements = [];
+        //get all, not cancelled visits
+        db.find({user_id: user.fb_id, type: 'visit', canceled: false}).sort({start: -1}).exec(
+            function (err, visits) {
+                findStreak(visits, 3);
+
+                return callback(day_summary, achievements);
+
+            });
+
+
+    }
 };
+
 
 
 function isDateExpired(date, secondsToExpire = (3600)) {
@@ -537,8 +587,8 @@ function isDateExpired(date, secondsToExpire = (3600)) {
     return ((new Date()) > expireDate);
 }
 
-function log(user, hint = "") {
-    console.log(hint + ": " + JSON.stringify(user));
+function log(object, hint = "") {
+    console.log(hint + ": " + JSON.stringify(object,null,'\t'));
 }
 
 
