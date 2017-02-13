@@ -535,11 +535,10 @@ var routes = function (app, db) {
 
     function findStreak(visits, streakLengthWanted) {
         var streakLength = 0;
-        log(visits, 'efd');
         for (let i = 1; i < visits.length; i++) {
             let lastMoment = moment(visits[i - 1].start);
-            let currentMoment = moment(visit.start);
-            log([lastMoment, currentMoment], 'findStreak');
+            let currentMoment = moment(visits[i].start);
+            log([lastMoment, currentMoment, currentMoment.diff(lastMoment, 'days')], 'findStreak');
             if (currentMoment.diff(lastMoment, 'days') === 1) {
                 streakLength += 1;
             } else {
@@ -553,25 +552,23 @@ var routes = function (app, db) {
         return false;
     }
 
-    function getAchievementFuctions() {
-        $func = [];
-
-        func['streak3'] = (visits) => {
-            return visits.every((visit, index, visits) => {
-
-                return (index > 3 || moment(visit.start).diff(moment));
-            });
+    function testAchievement(user, visits, achievementName, testFunction) {
+        let already = user.achievements.find((achievement) => {
+            return achievement.name === achievementName;
+        });
+        if ( !already && testFunction(user, visits)) {
+            return true;
         }
-
-
+        return false;
     }
+
 
     function giveAchievements(user, day_summary, callback) {
         let achievements = [];
         //get all, not cancelled visits
         db.find({user_id: user.fb_id, type: 'visit', canceled: false}).sort({start: -1}).exec(
             function (err, visits) {
-                findStreak(visits, 3);
+
 
                 return callback(day_summary, achievements);
 
