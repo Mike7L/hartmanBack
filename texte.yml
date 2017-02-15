@@ -1,0 +1,17 @@
+reactions:
+  good:
+    - "good1"
+    - "good2"
+    - "good3"
+  fine:
+    - "fine1"
+    - "fine2"
+    - "fine3"
+  bad:
+    - "bad1"
+    - "bad2"
+    - "bad3"
+  ugly:
+    - "ugly1"
+    - "ugly2"
+    - "ugly3"

@@ -461,17 +461,30 @@ var routes = function (app, db) {
 
             db.update({_id: json.fb_id}, user);
 
-            let reaction = multiplier < 1 ? "bad" : "good";
+            let reaction = multiplier === 1 ? "fine"
+                : multiplier < 1 ? "bad"
+                    : "good";
 
             return sendReaction(reaction);
         }
 
+
         function sendReaction(reaction) {
+
             let answer = {
                 "set_attributes": {
                     "reaction": reaction,
-                }
+                },
             };
+
+            let messagePool = app.texte.reactions[reaction];
+            if (messagePool !== undefined) {
+                let message = messagePool[Math.floor(Math.random() * messagePool.length)];
+                answer["messages"] = [
+                    {"text": message},
+                ];
+            }
+
 
             return sendJsonBack(res, answer);
         }
@@ -533,17 +546,18 @@ var routes = function (app, db) {
         return res.json(json);
     }
 
-    function findStreak(visits, streakLengthWanted) {
+    function findStreak(streakLengthWanted, user, visits) {
         var streakLength = 0;
         for (let i = 1; i < visits.length; i++) {
             let lastMoment = moment(visits[i - 1].start);
             let currentMoment = moment(visits[i].start);
-            log([lastMoment, currentMoment, currentMoment.diff(lastMoment, 'days')], 'findStreak');
-            if (currentMoment.diff(lastMoment, 'days') === 1) {
+            log([lastMoment, currentMoment, Math.abs(currentMoment.diff(lastMoment, 'days'))], 'findStreak');
+            if (Math.abs(currentMoment.diff(lastMoment, 'days')) === 0) {
                 streakLength += 1;
             } else {
                 streakLength = 0;
             }
+            log(streakLength, "streakLength");
 
             if (streakLength === streakLengthWanted) {
                 return true;
@@ -553,22 +567,35 @@ var routes = function (app, db) {
     }
 
     function testAchievement(user, visits, achievementName, testFunction) {
+        //check if user have this achievement already
         let already = user.achievements.find((achievement) => {
             return achievement.name === achievementName;
         });
-        if ( !already && testFunction(user, visits)) {
-            return true;
-        }
-        return false;
+
+        return !already && testFunction(user, visits);
     }
 
 
     function giveAchievements(user, day_summary, callback) {
-        let achievements = [];
         //get all, not cancelled visits
         db.find({user_id: user.fb_id, type: 'visit', canceled: false}).sort({start: -1}).exec(
             function (err, visits) {
+                let earnedAchievements = [];
+                let achievements = [
+                    {name: "streak3", func: findStreak.bind(null, 3)},
+                    {name: "streak7", func: findStreak.bind(null, 7)},
+                    {name: "streak14", func: findStreak.bind(null, 14)},
+                ];
 
+                for (let i = 0; i < achievements.length; i++) {
+                    let achievement = achievements[i];
+                    earnedAchievements.push(
+                        testAchievement(user, visits, achievement.name, achievement.func) ?
+                            achievement.name : false
+                    );
+                }
+
+                log(earnedAchievements, "earnedAchievements");
 
                 return callback(day_summary, achievements);
 
