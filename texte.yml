@@ -1,17 +1,13 @@
 reactions:
   good:
-    - "good1"
-    - "good2"
-    - "good3"
+    - "Weiter so, Rekruit!"
+    - "Klappt doch, Du Mimi!"
+    - "Kaum zu glauben, {{fb_first_name}}!"
   fine:
-    - "fine1"
-    - "fine2"
-    - "fine3"
+    - "Weiter so, Rekruit!"
+    - "Gut gemacht."
+    - "Ok."
   bad:
-    - "bad1"
-    - "bad2"
-    - "bad3"
-  ugly:
-    - "ugly1"
-    - "ugly2"
-    - "ugly3"
+    - "Was ist mit Dir los, Rekruit?!"
+    - "Beim nächsten mal etwas mehr Einsatz, Rekruit!"
+    - "Wie bitte, Rekruit? Das kann ja wohl nicht Dein Ernst sein!"
