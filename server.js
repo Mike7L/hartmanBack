@@ -23,7 +23,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 app.db = db;
 
-var routes = require("./routes.js")(app, db);
+var routes = require("./routesForDogs.js")(app, db);
 
 let port = process.env.PORT || 3000;
 
