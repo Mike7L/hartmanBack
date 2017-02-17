@@ -9,6 +9,23 @@ var routes = function (app, db) {
     var moment = require('moment');
     moment.locale('de');
 
+
+    app.post("/webhook", function (req, res) {
+        console.log("reset Received Post: " + JSON.stringify(req.body));
+
+        let message = {
+            "messages": [
+                {"text": "Good bye!"},
+            ]
+        };
+
+        console.log("User removed:" + req.body.fb_id);
+        return sendJsonBack(res, message);
+
+
+    });
+
+
     app.get("/", function (request, response) {
         response.sendFile(__dirname + '/views/index.html');
     });
