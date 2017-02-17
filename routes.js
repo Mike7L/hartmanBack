@@ -5,25 +5,239 @@
 
 var routes = function (app, db) {
 
-
     var moment = require('moment');
     moment.locale('de');
 
 
     app.post("/webhook", function (req, res) {
-        console.log("reset Received Post: " + JSON.stringify(req.body));
+        console.log("webhook Received Post: " + JSON.stringify(req.body));
 
-        let message = {
+        let answer = {
             "messages": [
                 {"text": "Good bye!"},
             ]
         };
 
-        console.log("User removed:" + req.body.fb_id);
+        let fbCardsMessage = {
+            attachment: {
+                type: "template",
+                payload: {
+                    template_type: "generic",
+                    elements: [
+                        {
+                            title: 'Kitten',
+                            image_url: 'https://example.com/cat.jpg',
+                            subtitle: 'Cat',
+                            buttons: [{type: 'postback', title: 'Buy', payload: 'buy'}]
+                        },
+                        {
+                            title: 'Gnome',
+                            image_url: 'https://example.com/gnome.png',
+                            buttons: [
+                                {type: 'postback', title: 'Info', payload: 'info'},
+                                {type: 'web_url', title: 'Gnome info', url: 'https://example.com/gnome'}
+                            ]
+                        }
+                    ]
+                }
+            }
+        };
+
+
+        let message = req.body;
+        message.result.fulfillment.messages = [
+            fbCardsMessage
+        ] ;
+
+
         return sendJsonBack(res, message);
 
 
     });
+
+
+    function responseToFB(response) {
+        if (this.isDefined(response.result) && this.isDefined(response.result.fulfillment)) {
+            let responseText = response.result.fulfillment.speech;
+            let responseData = response.result.fulfillment.data;
+            let responseMessages = response.result.fulfillment.messages;
+
+            let action = response.result.action;
+
+            if (this.isDefined(responseData) && this.isDefined(responseData.facebook)) {
+                let facebookResponseData = responseData.facebook;
+                this.doDataResponse(sender, facebookResponseData);
+            } else if (this.isDefined(responseMessages) && responseMessages.length > 0) {
+                this.doRichContentResponse(sender, responseMessages);
+            }
+            else if (this.isDefined(responseText)) {
+                this.doTextResponse(sender, responseText);
+            }
+
+        }
+    }
+
+
+
+    function  doRichContentResponse(sender, messages) {
+        let facebookMessages = []; // array with result messages
+
+        for (let messageIndex = 0; messageIndex < messages.length; messageIndex++) {
+            let message = messages[messageIndex];
+
+            switch (message.type) {
+                case 0:
+                    // speech: ["hi"]
+                    // we have to get value from fulfillment.speech, because of here is raw speech
+                    if (message.speech) {
+
+                        let splittedText = this.splitResponse(message.speech);
+
+                        splittedText.forEach(s => {
+                            facebookMessages.push({text: s});
+                        });
+                    }
+
+                    break;
+
+                case 1: {
+                    let carousel = [message];
+
+                    for (messageIndex++; messageIndex < messages.length; messageIndex++) {
+                        if (messages[messageIndex].type == 1) {
+                            carousel.push(messages[messageIndex]);
+                        } else {
+                            messageIndex--;
+                            break;
+                        }
+                    }
+
+                    let facebookMessage = {};
+                    carousel.forEach((c) => {
+                        // buttons: [ {text: "hi", postback: "postback"} ], imageUrl: "", title: "", subtitle: ""
+
+                        let card = {};
+
+                        card.title = c.title;
+                        card.image_url = c.imageUrl;
+                        if (this.isDefined(c.subtitle)) {
+                            card.subtitle = c.subtitle;
+                        }
+
+                        if (c.buttons.length > 0) {
+                            let buttons = [];
+                            for (let buttonIndex = 0; buttonIndex < c.buttons.length; buttonIndex++) {
+                                let button = c.buttons[buttonIndex];
+
+                                if (button.text) {
+                                    let postback = button.postback;
+                                    if (!postback) {
+                                        postback = button.text;
+                                    }
+
+                                    let buttonDescription = {
+                                        title: button.text
+                                    };
+
+                                    if (postback.startsWith("http")) {
+                                        buttonDescription.type = "web_url";
+                                        buttonDescription.url = postback;
+                                    } else {
+                                        buttonDescription.type = "postback";
+                                        buttonDescription.payload = postback;
+                                    }
+
+                                    buttons.push(buttonDescription);
+                                }
+                            }
+
+                            if (buttons.length > 0) {
+                                card.buttons = buttons;
+                            }
+                        }
+
+                        if (!facebookMessage.attachment) {
+                            facebookMessage.attachment = {type: "template"};
+                        }
+
+                        if (!facebookMessage.attachment.payload) {
+                            facebookMessage.attachment.payload = {template_type: "generic", elements: []};
+                        }
+
+                        facebookMessage.attachment.payload.elements.push(card);
+                    });
+
+                    facebookMessages.push(facebookMessage);
+                }
+
+                    break;
+
+                case 2: {
+                    if (message.replies && message.replies.length > 0) {
+                        let facebookMessage = {};
+
+                        facebookMessage.text = message.title ? message.title : 'Choose an item';
+                        facebookMessage.quick_replies = [];
+
+                        message.replies.forEach((r) => {
+                            facebookMessage.quick_replies.push({
+                                content_type: "text",
+                                title: r,
+                                payload: r
+                            });
+                        });
+
+                        facebookMessages.push(facebookMessage);
+                    }
+                }
+
+                    break;
+
+                case 3:
+
+                    if (message.imageUrl) {
+                        let facebookMessage = {};
+
+                        // "imageUrl": "http://example.com/image.jpg"
+                        facebookMessage.attachment = {type: "image"};
+                        facebookMessage.attachment.payload = {url: message.imageUrl};
+
+                        facebookMessages.push(facebookMessage);
+                    }
+
+                    break;
+
+                case 4:
+                    if (message.payload && message.payload.facebook) {
+                        facebookMessages.push(message.payload.facebook);
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        return new Promise((resolve, reject) => {
+            async.eachSeries(facebookMessages, (msg, callback) => {
+                    this.sendFBSenderAction(sender, "typing_on")
+                        .then(() => this.sleep(this.messagesDelay))
+                        .then(() => this.sendFBMessage(sender, msg))
+                        .then(() => callback())
+                        .catch(callback);
+                },
+                (err) => {
+                    if (err) {
+                        console.error(err);
+                        reject(err);
+                    } else {
+                        console.log('Messages sent');
+                        resolve();
+                    }
+                });
+        });
+
+    }
 
 
     app.get("/", function (request, response) {
@@ -48,13 +262,6 @@ var routes = function (app, db) {
         });
     });
 
-    app.get("/showDatabase", function (req, res) {
-        fs = require('fs');
-        fs.readFile('.data/datafile', 'utf8', (err, data) => {
-            return res.send(data);
-        });
-    });
-
     app.post("/reset", function (req, res) {
         console.log("reset Received Post: " + JSON.stringify(req.body));
         if (!req.body.fb_id) {
@@ -75,32 +282,7 @@ var routes = function (app, db) {
             };
 
             console.log("User removed:" + req.body.fb_id);
-            //TODO: Do all res.json from one funtion
-            return sendJsonBack(res, message);
-        });
-
-
-    });
-
-
-    app.get("/setdev", function (req, res) {
-        console.log("setdev Received Post: " + JSON.stringify(req.query));
-        if (!req.query.fb_id) {
-            console.log("Received incomplete POST: " + JSON.stringify(req.query));
-            return res.send({"status": "error", "message": "missing parameter(s)"});
-        }
-
-        var is_dev = req.query.is_dev === "true";
-
-        db.update({_id: req.query.fb_id}, {$set: {"is_dev": is_dev}}, function (err) {
-            let message = {
-                "messages": [
-                    {"text": is_dev ? "You are GOD now!" : "You are NOTHING now!"},
-                ]
-            };
-
-            console.log((is_dev ? "You are GOD now!" : "You are NOTHING now!") + req.query.fb_id);
-            return sendJsonBack(res, message);
+            return res.json(message);
         });
 
 
@@ -157,20 +339,15 @@ var routes = function (app, db) {
                 user = newUser(json);
             }
 
-            cancelUnfinishedVisits(user, isTheVisitOnTime);
+            newVisit(user);
+            return redirect(user);
         });
 
 
         function newUser(user) {
             user._id = user.fb_id;
-            user.type = 'user';
-
-            user.is_dev = (user.fb_id == "5893cd55e4b082e100db6986" || user.fb_id == "5893c694e4b082e100c072d4");
-
-
-            user.score = 0;
-            user.achievements = [];
-
+            user.type = 'user',
+                user.score = 0;
             user.programm = 0;
             user.muscle_top = 1;
             user.muscle_middle = 1;
@@ -179,13 +356,23 @@ var routes = function (app, db) {
             user.visit_first = new Date();
             user.visit_last = new Date();
 
-            console.log("Created user: " + JSON.stringify(user));
+            //Davidovsy
+            if (user.fb_id == "588a6503e4b012460e93828b" || user.fb_id == "5849c9f1e4b05a2c162d9b9a") {
+                user.programm = 0;
+
+                user.muscle_top = 1;
+                user.muscle_middle = 1;
+                user.muscle_bottom = 1;
+            }
+
+
+            console.log("Created user: " + JSON.stringify(user))
 
             db.insert(user);
             return user;
         }
 
-        function newVisit(user, tooLate = false) {
+        function newVisit(user) {
             let visit = {
                 type: 'visit',
                 user_id: user._id,
@@ -194,87 +381,37 @@ var routes = function (app, db) {
                 finish: new Date(),
                 finished: false,
                 canceled: false,
-                punished: tooLate,
                 exercises: []
-            };
+            }
 
-            db.insert(visit);
-        }
-
-
-        function cancelUnfinishedVisits(user, callback) {
-
-            //TODO: if user accidentally starts the visit over again... try to find the current visit?
-
-            //set all unfinished visits to finished but canceled
+            //set all other visits to finished but canceled
             db.update({type: 'visit', user_id: user._id, finished: false}, {
                 $set: {
                     finished: true,
                     canceled: true
                 }
-            }, {multi: true}, (err, numReplaced) => {
-                callback(user);
+            }, {multi: true}, function (err, numReplaced) {
+
             });
-        }
 
-        function dateAdd24(oldDate) {
-            let newDate = new Date(oldDate);
-            newDate.setHours(newDate.getHours() + 24);
-            return (new Date(newDate));
+
+            db.insert(visit);
         }
 
 
-        function isTheVisitOnTime(user, callback) {
-            //Find the last visit, that not cancelled is
-            db.findOne({user_id: user.fb_id, type: 'visit', canceled: false})
-                .sort({finish: -1}).exec(function (err, lastVisit) {
-                //console.log("His last visit was: " + JSON.stringify(docs));
-
-                let tooEarly = false;
-                let tooLate = false;
-
-                if (lastVisit !== null) {
-                    let currentDate = new Date();
-                    //Test Current Date
-                    //currentDate.setHours(currentDate.getHours() + 56);
-
-                    let lastVisitDate = new Date((new Date(lastVisit.finish)).setHours(0, 0, 0, 0));
-                    let lastVisitMidnight = dateAdd24(lastVisitDate);
-                    let dayAfterLastVisitMidnight = dateAdd24(dateAdd24(lastVisitDate));
-                    //---(lastVisit)--(tooEarly)--(lastVisitMidnight)|-------(inTime)-----(dayAfterLastVisitMidnight)|(tooLate)----....
-                    tooEarly = (currentDate < lastVisitMidnight);
-                    tooLate = (currentDate > dayAfterLastVisitMidnight);
-
-                    //log
-                    //console.log(currentDate.toUTCString(),(new Date(lastVisit.finish)).toUTCString(), lastVisitMidnight.toUTCString(), dayAfterLastVisitMidnight.toUTCString(), tooEarly, tooLate);
-                }
-
-                // it's never too Early for us
-                tooEarly = user.is_dev ? false : tooEarly;
-
-                if (!tooEarly) {
-                    newVisit(user, tooLate);
-                }
-
-                return redirect(user, tooEarly, tooLate);
-                //redirect(user);
-            });
-        }
-
-
-        function redirect(user, too_early = false, tooLate = false) {
+        function redirect(user) {
 
             console.log("redirecting " + user.fb_first_name + " to " + user.programm);
 
+
             let answer = {
                 "set_attributes": {
-                    "too_early": too_early ? "true" : "false",
-                    "programm": too_early ? "null" : user.programm.toString(),
-                    "punishment": tooLate ? "true" : "false",
+                    "timing": "in_time",
+                    "programm": user.programm
                 }
             };
 
-            return sendJsonBack(res, answer);
+            return res.json(answer);
         }
 
 
@@ -333,7 +470,7 @@ var routes = function (app, db) {
                 }
             };
 
-            return sendJsonBack(res, answer);
+            return res.json(answer);
         }
     });
 
@@ -351,44 +488,39 @@ var routes = function (app, db) {
         db.findOne({_id: json.fb_id}, function (err, user) {
             //console.log(err);
 
-            logExercise(user, json);
+            return react(user, json);
         });
 
         //returns FALSE, if it is too late
         function logExercise(user, json) {
             //find unfinished visit
-            //TODO: visit null ?
             let inTime = 'x';
             db.findOne({user_id: json.fb_id, type: 'visit', finished: false}, inTime = function (err, visit) {
                 //console.log(err);
+                let expireDate = new Date(visit.finish);
+                expireDate.setSeconds(expireDate.getSeconds() + 15);
 
-                if (isDateExpired(visit.finish, secondsExpiredInput)) {
-                    //Visit is EXPIRED !!! Cancel it! Finish it!
-                    db.update({_id: visit._id},
-                        {$set: {canceled: true, finished: true}},
-                        {multi: false},
-                        function (err, numReplaced) {
-                            console.log("Too Late!");
-                            return sendReaction('too_late');
-                        });
-                    return;
+                if ((new Date()) > expireDate) {
+                    //hoursExpiredInput
+                    //Too Late!
+                    //console.log("Too Late!");
+                    inTime = false;
+                    return false;
                 }
-
-                console.log("in Time! ");
                 visit.exercises.push({
                     exercise: json.exercise,
                     exercise_group: json.exercise_group,
-                    repsTodo: parseInt(json.repsTodo),
-                    repsDone: normalizeRepsDone(json),
-                    repsDoneOriginal: json.repsDone,
-                    completeTime: (new Date())
+                    repsTodo: json.repsTodo,
+                    repsDone: json.repsDone
                 });
+                //console.log("in Time!");
 
+                //log(visit, "Exercise log");
 
                 db.update({_id: visit._id}, visit);
                 // log(visit, 'visit');
-
-                react(user, json);
+                inTime = true;
+                return true;
 
             });
 
@@ -396,42 +528,21 @@ var routes = function (app, db) {
             return inTime;
         }
 
-        function normalizeRepsDone(json) {
-            let original = json.repsDone;
-            let repsTodo = parseInt(json.repsTodo);
-            let numbers = original.match(/\d+/);
-
-            if (numbers !== null) {
-                let number = parseInt(numbers[0]);
-                if (number > 0) {
-                    return number;
-                }
-            }
-
-            if (original.includes('...')) {
-                return Math.min(Math.round(repsTodo * 0.9), repsTodo - 1);
-
-            } else if (original.includes('.')) {
-                return repsTodo;
-
-            } else if (original.includes('!')) {
-                return Math.max(Math.round(repsTodo * 1.1), repsTodo + 1);
-            } else {
-                return -1;
-            }
-
-        }
-
-
         function react(user, json) {
 
-            let repsTodo = parseInt(json.repsTodo);
-            let repsDone = normalizeRepsDone(json);
-
-            if ((repsDone < (repsTodo * 0.1)) || (repsDone > 10 * repsTodo)) {
+            if ((json.repsDone < 0) || (json.repsDone > 10 * json.repsTodo)) {
                 return sendReaction("ugly");
             }
 
+            let inTime = logExercise(user, json);
+            if (!inTime) {
+                console.log("Too Late!");
+                return sendReaction('too_late');
+            }
+            console.log("In time!");
+
+            let repsTodo = parseInt(json.repsTodo);
+            let repsDone = parseInt(json.repsDone);
 
             let multiplier = 1;
             if (user.programm == 0) {
@@ -453,6 +564,7 @@ var routes = function (app, db) {
             }
 
 
+            let group_strength = 1;
             switch (json.exercise_group) {
                 case "top":
                     user.muscle_top *= multiplier;
@@ -464,7 +576,7 @@ var routes = function (app, db) {
                     user.muscle_bottom *= multiplier;
                     break;
                 default:
-                    console.log("unknown muscle group!");
+                //bottom
             }
 
 
@@ -478,32 +590,19 @@ var routes = function (app, db) {
 
             db.update({_id: json.fb_id}, user);
 
-            let reaction = multiplier === 1 ? "fine"
-                : multiplier < 1 ? "bad"
-                    : "good";
+            let reaction = multiplier < 1 ? "bad" : "good";
 
             return sendReaction(reaction);
         }
 
-
         function sendReaction(reaction) {
-
             let answer = {
                 "set_attributes": {
                     "reaction": reaction,
-                },
+                }
             };
 
-            let messagePool = app.texte.reactions[reaction];
-            if (messagePool !== undefined) {
-                let message = messagePool[Math.floor(Math.random() * messagePool.length)];
-                answer["messages"] = [
-                    {"text": message},
-                ];
-            }
-
-
-            return sendJsonBack(res, answer);
+            return res.json(answer);
         }
     });
 
@@ -519,6 +618,7 @@ var routes = function (app, db) {
 
         db.findOne({_id: json.fb_id}, function (err, user) {
             //console.log(err);
+
             return finish(user, json);
         });
 
@@ -542,8 +642,8 @@ var routes = function (app, db) {
 
             });
 
-            giveAchievements(user, day_summary, sendDaySummary);
 
+            return sendDaySummary(day_summary);
         }
 
         function sendDaySummary(day_summary) {
@@ -553,91 +653,19 @@ var routes = function (app, db) {
                 }
             };
 
-            return sendJsonBack(res, answer);
+            return res.json(answer);
         }
     });
 
 
-    function sendJsonBack(res, json) {
-        console.log("sendJsonBack" + JSON.stringify(json));
-        return res.json(json);
-    }
-
-    function findStreak(streakLengthWanted, user, visits) {
-        var streakLength = 0;
-        for (let i = 1; i < visits.length; i++) {
-            let lastMoment = moment(visits[i - 1].start);
-            let currentMoment = moment(visits[i].start);
-            log([lastMoment, currentMoment, Math.abs(currentMoment.diff(lastMoment, 'days'))], 'findStreak');
-            if (Math.abs(currentMoment.diff(lastMoment, 'days')) === 0) {
-                streakLength += 1;
-            } else {
-                streakLength = 0;
-            }
-            log(streakLength, "streakLength");
-
-            if (streakLength === streakLengthWanted) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    function testAchievement(user, visits, achievementName, testFunction) {
-        //check if user have this achievement already
-        let already = user.achievements.find((achievement) => {
-            return achievement.name === achievementName;
-        });
-
-        return !already && testFunction(user, visits);
-    }
-
-
-    function giveAchievements(user, day_summary, callback) {
-        //get all, not cancelled visits
-        db.find({user_id: user.fb_id, type: 'visit', canceled: false}).sort({start: -1}).exec(
-            function (err, visits) {
-                let earnedAchievements = [];
-                let achievements = [
-                    {name: "streak3", func: findStreak.bind(null, 3)},
-                    {name: "streak7", func: findStreak.bind(null, 7)},
-                    {name: "streak14", func: findStreak.bind(null, 14)},
-                ];
-
-                for (let i = 0; i < achievements.length; i++) {
-                    let achievement = achievements[i];
-                    earnedAchievements.push(
-                        testAchievement(user, visits, achievement.name, achievement.func) ?
-                            achievement.name : false
-                    );
-                }
-
-                log(earnedAchievements, "earnedAchievements");
-
-                return callback(day_summary, achievements);
-
-            });
-
-
-    }
 };
 
 
-function isDateExpired(date, secondsToExpire = (3600)) {
-
-
-    let expireDate = new Date(date.getTime() + secondsToExpire * 1000);
-
-    console.log(date, expireDate);
-    return ((new Date()) > expireDate);
+function log(user, hint = "") {
+    console.log(hint + ": " + JSON.stringify(user));
 }
 
-function log(object, hint = "") {
-    console.log(hint + ": " + JSON.stringify(object, null, '\t'));
-}
-
-
-let secondsExpiredInput = 3600;
-
+let hoursExpiredInput = 2;
+let hoursExpiredVisit = 20;
 
 module.exports = routes;
