@@ -19,3 +19,5 @@ goodbye:
 default:
   - "Beantworte meine Frage, Rekruit!"
   - "Lass den Unsinn, Rekruit, und beantworte die Frage!"
+  - "Habe ich dir erlaubt, hier Blödsinn zu erzählen, Rekruit? Beantworte sofort die Frage!"
+  - "So ein Quatsch, Rekruit! Beantworte sofort meine Frage!"
