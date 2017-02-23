@@ -15,7 +15,10 @@ reactions:
     - "Du Lusche! Gib Dir gefälligst mehr Mühe!"
 goodbye:
   - "So, jetzt genug für heute, Du Puddingstelze."
-  - "Wegtreten."
+  - "Das war's für heute, Rekruit."
+  - "Dein Job für heute ist erledigt, {{fb_first_name}}!"
+  - "Genug für heute, Du Waschlappen."
+  - "So, {{fb_first_name}}, das reicht für heute."
 default:
   - "Beantworte meine Frage, Rekruit!"
   - "Lass den Unsinn, Rekruit, und beantworte die Frage!"
