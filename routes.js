@@ -547,10 +547,11 @@ var routes = function (app, db) {
 
         }
 
-        function sendDaySummary(day_summary) {
+        function sendDaySummary(day_summary, achievement) {
             let answer = {
                 "set_attributes": {
                     "day_summary": day_summary,
+                    "achievement": achievement ? achievement : ""
                 }
             };
 
@@ -584,6 +585,12 @@ var routes = function (app, db) {
         return false;
     }
 
+
+
+    function achievementIsDev(user, visits) {
+        return user.is_dev;
+    }
+
     function testAchievement(user, visits, achievementName, testFunction) {
         //check if user have this achievement already
         let already = user.achievements.find((achievement) => {
@@ -598,8 +605,9 @@ var routes = function (app, db) {
         //get all, not cancelled visits
         db.find({user_id: user.fb_id, type: 'visit', canceled: false}).sort({start: -1}).exec(
             function (err, visits) {
-                let earnedAchievements = [];
+                let earnedAchievement = false;
                 let achievements = [
+                    {name: "isDev", func: achievementIsDev},
                     {name: "streak3", func: findStreak.bind(null, 3)},
                     {name: "streak7", func: findStreak.bind(null, 7)},
                     {name: "streak14", func: findStreak.bind(null, 14)},
@@ -607,15 +615,19 @@ var routes = function (app, db) {
 
                 for (let i = 0; i < achievements.length; i++) {
                     let achievement = achievements[i];
-                    earnedAchievements.push(
+                    earnedAchievement = (
                         testAchievement(user, visits, achievement.name, achievement.func) ?
                             achievement.name : false
                     );
+                    log(earnedAchievement, "fa");
+                    if (earnedAchievement !== false) {
+                        break;
+                    }
                 }
 
-                log(earnedAchievements, "earnedAchievements");
+                log(earnedAchievement, "earnedAchievements");
 
-                return callback(day_summary, achievements);
+                return callback(day_summary, earnedAchievement);
 
             });
 
