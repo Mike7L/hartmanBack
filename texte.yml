@@ -13,3 +13,9 @@ reactions:
     - "Beim nächsten mal etwas mehr Einsatz, Rekruit!"
     - "Wie bitte, Rekruit? Das kann ja wohl nicht Dein Ernst sein!"
     - "Du Lusche! Gib Dir gefälligst mehr Mühe!"
+goodbye:
+  - "So, jetzt genug für heute, Du Puddingstelze."
+  - "Wegtreten."
+default:
+  - "Beantworte meine Frage, Rekruit!"
+  - "Lass den Unsinn, Rekruit, und beantworte die Frage!"
