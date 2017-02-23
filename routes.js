@@ -13,6 +13,22 @@ var routes = function (app, db) {
         response.sendFile(__dirname + '/views/index.html');
     });
 
+
+    app.get("/randomPhrase", function (request, response) {
+        //https://hartmanback.gomix.me/randomPhrase?event=default
+        let messagePool = app.texte[request.query.event];
+
+        let message = messagePool[Math.floor(Math.random() * messagePool.length)];
+
+        let answer = {
+            "messages": [
+                {"text": message},
+            ]
+        };
+
+        return sendJsonBack(response, answer);
+    });
+
     app.get("/users", function (request, response) {
         var dbUsers = [];
         db.find({}, function (err, users) { // Find all users in the collection
@@ -478,7 +494,6 @@ var routes = function (app, db) {
             };
 
             let messagePool = app.texte.reactions[reaction];
-            log(messagePool);
 
             if (messagePool !== undefined) {
                 let message = messagePool[Math.floor(Math.random() * messagePool.length)];
@@ -491,6 +506,7 @@ var routes = function (app, db) {
             return sendJsonBack(res, answer);
         }
     });
+
 
     app.post("/finish", function (req, res) {
         //{"fb_id":"5849c9f1e4b05a2c162d9b9a","exercise":"1","exercise_group":"top","exercise_norm":"10","repsTodo":"10","repsDone":"6"}
