@@ -32,7 +32,7 @@ var routes = function (app, db) {
     });
 
     app.get("/showDatabase", function (req, res) {
-        fs = require('fs');
+        let fs = require('fs');
         fs.readFile('.data/datafile', 'utf8', (err, data) => {
             return res.send(data);
         });
