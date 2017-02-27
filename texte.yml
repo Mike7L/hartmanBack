@@ -33,3 +33,6 @@ tooearly:
   - "MORGEN habe ich gesagt, Rekrut!"
   - "Hörst Du schlecht, {{fb_first_name}}? MORGEN!"
   - "Nicht so übereifrig, {{fb_first_name}}! Wir sehen uns morgen."
+welcomeback:
+  - "Willkommen zurück, Rekrut!"
+  - "
